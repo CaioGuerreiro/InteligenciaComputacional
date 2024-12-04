@@ -1,4 +1,3 @@
-
 import random
 import time
 
@@ -7,7 +6,8 @@ class RoboAspirador:
         self.ambiente = ambiente
         self.posicao = (0, 0)  # Começa no canto superior esquerdo
         self.movimentos = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Direções: direita, baixo, esquerda, cima
-    
+        self.visitados = set()  # Armazena as posições já visitadas
+
     def exibir_ambiente(self):
         # Exibe o ambiente, incluindo bordas e a posição do robô
         print("+" + "-" * (2 * len(self.ambiente[0]) + 1) + "+")
@@ -17,7 +17,6 @@ class RoboAspirador:
                 linha_com_robo[self.posicao[1]] = "A"
             print("| " + " ".join(linha_com_robo) + " |")
         print("+" + "-" * (2 * len(self.ambiente[0]) + 1) + "+\n")
-
 
     def detectar_sujeira(self):
         x, y = self.posicao
@@ -29,33 +28,54 @@ class RoboAspirador:
         print(f"Limpei a sujeira em {self.posicao}!")
 
     def mover(self):
-        movimentos_validos = []
-        for dx, dy in self.movimentos:
-            nova_posicao = (self.posicao[0] + dx, self.posicao[1] + dy)
-            if self.verificar_limite(nova_posicao):
-                movimentos_validos.append(nova_posicao)
+        x, y = self.posicao
+        self.visitados.add(self.posicao)  # Marca a posição atual como visitada
         
-        if movimentos_validos:
+        # Verifica os movimentos válidos
+        movimentos_validos = []
+        movimentos_prioritarios = []
+        
+        for dx, dy in self.movimentos:
+            nova_posicao = (x + dx, y + dy)
+            if self.verificar_movimento(nova_posicao):
+                movimentos_validos.append(nova_posicao)
+                if nova_posicao not in self.visitados:
+                    movimentos_prioritarios.append(nova_posicao)
+        
+        # Prioriza células não visitadas
+        if movimentos_prioritarios:
+            self.posicao = random.choice(movimentos_prioritarios)
+        elif movimentos_validos:
             self.posicao = random.choice(movimentos_validos)
+        else:
+            # Caso não tenha movimentos válidos, limpa a lista de visitados
+            self.visitados.clear()
+            print("Sem movimentos válidos! Reexplorando o ambiente...")
 
-    def verificar_limite(self, posicao):
+    def verificar_movimento(self, posicao):
         x, y = posicao
-        return 0 <= x < len(self.ambiente) and 0 <= y < len(self.ambiente[0]) and self.ambiente[x][y] != "#"
+        # Verifica limites do ambiente e se a posição não é uma parede
+        return (
+            0 <= x < len(self.ambiente) and
+            0 <= y < len(self.ambiente[0]) and
+            self.ambiente[x][y] != "#"
+        )
 
     def executar(self):
         print("Iniciando limpeza!")
         start_time = time.perf_counter()
-        while any("D" in linha for linha in self.ambiente):
+        while any("D" in linha for linha in self.ambiente):  # Continua enquanto houver sujeira
             self.exibir_ambiente()
             if self.detectar_sujeira():
                 self.limpar()
             else:
                 self.mover()
             time.sleep(1)
-        end_time = time.perf_counter()  
+        end_time = time.perf_counter()
         elapsed_time = end_time - start_time
         print(f"Limpeza concluída em {elapsed_time:.2f} segundos!")
         self.exibir_ambiente()
+
 
 # Criando o ambiente
 def criar_ambiente(linhas, colunas, sujeira, paredes):
